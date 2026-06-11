@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 // ── SUPABASE CONFIG ───────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://njxoevjpvrkmtmbrndpf.supabase.co";
-const SUPABASE_KEY = "sb_publishable_Xu4c7ygd3CT_swuDnvTd8Q_HSsKzPXb";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qeG9ldmpwdnJrbXRtYnJuZHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTU1MDksImV4cCI6MjA5NjYzMTUwOX0._Wef12t2COcXA8gaOyOs7dlmCiF7m2OlXAJRsXSNaZc";
 
 const sb = {
   from: (table) => ({
@@ -1336,3 +1336,4 @@ export default function CartaVinos() {
 
   return null;
 }
+
