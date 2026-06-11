@@ -189,7 +189,7 @@ export default function CartaVinos() {
   const [modo,          setModo]          = useState("guest");
   const [screen,        setScreen]        = useState("home");
   const [restauranteId, setRestauranteId] = useState(null);
-  const [cargando,      setCargando]      = useState(true);
+  const [cargando,      setCargando]      = useState(false);
 
   // ── Cargar datos de Supabase al arrancar ─────────────────────────────────
   useEffect(() => {
@@ -1336,4 +1336,3 @@ export default function CartaVinos() {
 
   return null;
 }
-
