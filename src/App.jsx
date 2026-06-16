@@ -289,6 +289,30 @@ export default function CartaVinos() {
   const [nuevoPlatillo, setNuevoPlatillo] = useState(null);
   const [toast,         setToast]         = useState(null);
 
+  // ── Plataforma state ──────────────────────────────────────────────────────
+  const [platPinInput,     setPlatPinInput]     = useState("");
+  const [platRestaurantes, setPlatRestaurantes] = useState([]);
+
+  const cargarPlataforma = async () => {
+    try {
+      const data = await fetch(`${SUPABASE_URL}/rest/v1/restaurantes?select=*&order=created_at.asc`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      }).then(r => r.json());
+      setPlatRestaurantes(data || []);
+    } catch(e) { console.error("Error cargando plataforma:", e); }
+  };
+
+  const trackEvento = async (tipo, extra={}) => {
+    if (!restauranteId) return;
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/eventos`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, restaurante_id: restauranteId, ...extra }),
+      });
+    } catch(e) { /* silencioso */ }
+  };
+
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 2500); };
 
   // ── Pantalla de carga ─────────────────────────────────────────────────────
@@ -566,7 +590,7 @@ export default function CartaVinos() {
         {/* FOOTER — Admin + VinotecApp */}
         <div style={{ position:"relative", zIndex:1, flex:"0 0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 24px 20px" }}>
           <button onClick={() => { setModo("admin"); setScreen("admin-pin"); }} style={{ background:"rgba(0,0,0,0.3)", border:`1px solid ${C.p}22`, borderRadius:8, padding:"5px 14px", color:`${C.p}55`, cursor:"pointer", fontFamily:"inherit", fontSize:11, letterSpacing:2, backdropFilter:"blur(4px)" }}>Admin</button>
-          <div style={{ fontSize:14, color:C.p, letterSpacing:3, fontWeight:400, opacity:0.8 }}>VinotecApp</div>
+          <button onClick={() => { setModo("plataforma"); setScreen("plat-pin"); }} style={{ background:"none", border:"none", fontSize:14, color:C.p, letterSpacing:3, fontWeight:400, opacity:0.8, cursor:"pointer", fontFamily:"inherit", padding:0 }}>VinotecApp</button>
         </div>
       </div>
     );
@@ -1334,5 +1358,318 @@ export default function CartaVinos() {
     );
   }
 
+  // ═══════════════════════════════════════════════════
+  // PANEL DE PLATAFORMA (Federico — dueño de VinotecApp)
+  // ═══════════════════════════════════════════════════
+  if (modo==="plataforma" && screen==="plat-pin") return (
+    <div style={{ minHeight:"100vh", background:"#060408", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Cormorant Garamond','Georgia',serif", color:"#f5ede0" }}>
+      <div style={{ textAlign:"center", width:"100%", maxWidth:360, padding:32 }}>
+        <div style={{ fontSize:28, fontWeight:300, letterSpacing:4, marginBottom:4 }}>VinotecApp</div>
+        <div style={{ fontSize:11, letterSpacing:4, color:"#9b7fe8", textTransform:"uppercase", marginBottom:32 }}>Panel de Plataforma</div>
+        <div style={{ fontSize:12, color:"#806050", letterSpacing:3, textTransform:"uppercase", marginBottom:20 }}>PIN Maestro</div>
+        <div style={{ display:"flex", justifyContent:"center", gap:12, marginBottom:28 }}>
+          {[0,1,2,3].map(i => <div key={i} style={{ width:14, height:14, borderRadius:"50%", background:i<platPinInput.length?"#9b7fe8":"transparent", border:"2px solid #9b7fe866", transition:"all 0.2s" }}/>)}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:24 }}>
+          {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((d,i) => (
+            <button key={i} onClick={() => {
+              if (d==="⌫") { setPlatPinInput(p=>p.slice(0,-1)); return; }
+              if (d==="") return;
+              const np = platPinInput + String(d);
+              setPlatPinInput(np);
+              if (np.length===4) {
+                if (np==="0000") { setPlatPinInput(""); setScreen("plataforma"); cargarPlataforma(); }
+                else setTimeout(() => setPlatPinInput(""), 600);
+              }
+            }} style={{ background:d===""?"transparent":"linear-gradient(135deg,#12080a,#1c1020)", border:d===""?"none":"1px solid #9b7fe822", borderRadius:12, padding:18, color:"#f5ede0", fontSize:22, fontFamily:"inherit", cursor:d===""?"default":"pointer" }}>{d}</button>
+          ))}
+        </div>
+        <button onClick={() => { setModo("guest"); setScreen("home"); setPlatPinInput(""); }} style={{ background:"none", border:"none", color:"#4a3a2a", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>← Cancelar</button>
+      </div>
+    </div>
+  );
+
+  if (modo==="plataforma" && screen==="plataforma") return (
+    <PanelPlataforma
+      restaurantes={platRestaurantes}
+      onRefresh={cargarPlataforma}
+      onSalir={() => { setModo("guest"); setScreen("home"); }}
+      SUPABASE_URL={SUPABASE_URL}
+      SUPABASE_KEY={SUPABASE_KEY}
+    />
+  );
+
   return null;
+}
+
+// ═══════════════════════════════════════════════════
+// COMPONENTE: PANEL DE PLATAFORMA
+// ═══════════════════════════════════════════════════
+function PanelPlataforma({ restaurantes, onRefresh, onSalir, SUPABASE_URL, SUPABASE_KEY }) {
+  const [tab, setTab]           = useState("restaurantes");
+  const [editRest, setEditRest] = useState(null);
+  const [nuevoRest, setNuevoRest] = useState(null);
+  const [eventos, setEventos]   = useState([]);
+  const [restSelec, setRestSelec] = useState(null);
+  const [toast, setToast]       = useState(null);
+
+  const showToast = (msg, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),2500); };
+
+  const P = "#9b7fe8"; // morado — color del panel maestro
+  const bg = "#060408";
+
+  const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+
+  const toggleActivo = async (rest) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/restaurantes?id=eq.${rest.id}`, {
+      method: "PATCH", headers, body: JSON.stringify({ activo: !rest.activo })
+    });
+    showToast(rest.activo ? "Restaurante desactivado" : "Restaurante activado", !rest.activo);
+    onRefresh();
+  };
+
+  const guardarRestaurante = async (r) => {
+    const data = { nombre: r.nombre, contacto_nombre: r.contacto_nombre, contacto_email: r.contacto_email, contacto_tel: r.contacto_tel, plan: r.plan, fecha_vencimiento: r.fecha_vencimiento||null, notas: r.notas, pin_admin: r.pin_admin, pin_mesero: r.pin_mesero };
+    if (r.id) {
+      await fetch(`${SUPABASE_URL}/rest/v1/restaurantes?id=eq.${r.id}`, { method:"PATCH", headers, body:JSON.stringify(data) });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/restaurantes`, { method:"POST", headers:{ ...headers, Prefer:"return=representation" }, body:JSON.stringify({ ...data, activo:true }) });
+    }
+    showToast("Restaurante guardado ✓");
+    setEditRest(null); setNuevoRest(null);
+    onRefresh();
+  };
+
+  const cargarEventos = async (restId) => {
+    const data = await fetch(`${SUPABASE_URL}/rest/v1/eventos?restaurante_id=eq.${restId}&order=created_at.desc&limit=200`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }).then(r=>r.json());
+    setEventos(data||[]);
+    setRestSelec(restId);
+  };
+
+  const TabBtn = ({id, label}) => (
+    <button onClick={()=>setTab(id)} style={{ flex:1, padding:"12px 8px", background:tab===id?`${P}18`:"transparent", border:"none", borderBottom:tab===id?`2px solid ${P}`:"2px solid transparent", color:tab===id?P:"#806050", cursor:"pointer", fontFamily:"inherit", fontSize:14, transition:"all 0.2s" }}>{label}</button>
+  );
+
+  // Contar eventos por tipo para un restaurante
+  const contarEventos = (restId, tipo) => eventos.filter(e=>e.restaurante_id===restId&&e.tipo===tipo).length;
+
+  return (
+    <div style={{ minHeight:"100vh", background:bg, color:"#f5ede0", fontFamily:"'Cormorant Garamond','Georgia',serif", display:"flex", flexDirection:"column" }}>
+      {toast && <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:100, background:toast.ok?"#1a3a1a":"#3a1a1a", border:`1px solid ${toast.ok?"#4a8a4a":"#8a4a4a"}`, borderRadius:10, padding:"10px 20px", color:toast.ok?"#a0d0a0":"#d0a0a0", fontSize:14 }}>{toast.msg}</div>}
+
+      {/* Header */}
+      <div style={{ padding:"16px 24px", borderBottom:`1px solid ${P}18`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+        <div>
+          <div style={{ fontSize:11, letterSpacing:4, color:P, textTransform:"uppercase" }}>Panel Maestro</div>
+          <div style={{ fontSize:22, fontWeight:300 }}>VinotecApp</div>
+        </div>
+        <button onClick={onSalir} style={{ background:`${P}18`, border:`1px solid ${P}33`, borderRadius:8, padding:"8px 16px", color:"#f5ede0", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>Salir</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${P}18`, flexShrink:0 }}>
+        <TabBtn id="restaurantes" label="🏪 Restaurantes"/>
+        <TabBtn id="analiticas"   label="📊 Analíticas"/>
+      </div>
+
+      {/* ── TAB: RESTAURANTES ── */}
+      {tab==="restaurantes" && (
+        <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+            <div style={{ fontSize:16, fontWeight:300 }}>{restaurantes.length} restaurantes registrados</div>
+            <button onClick={() => setNuevoRest({ nombre:"", contacto_nombre:"", contacto_email:"", contacto_tel:"", plan:"mensual", pin_admin:"9999", pin_mesero:"1234", notas:"" })} style={{ padding:"8px 16px", background:`${P}18`, border:`1px solid ${P}44`, borderRadius:8, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>
+              + Nuevo restaurante
+            </button>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {restaurantes.map(r => (
+              <div key={r.id} style={{ background:"linear-gradient(135deg,#0e080e,#160e18)", border:`1px solid ${r.activo?"#9b7fe822":"rgba(139,32,53,0.2)"}`, borderRadius:12, padding:"16px 20px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+                  {/* Status dot */}
+                  <div style={{ width:10, height:10, borderRadius:"50%", background:r.activo?"#4a8a4a":"#8a4a4a", flexShrink:0 }}/>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:18, fontWeight:400 }}>{r.nombre}</div>
+                    <div style={{ fontSize:12, color:"#806050" }}>{r.activo?"Activo":"Inactivo"} · {r.plan||"mensual"}{r.fecha_vencimiento?` · vence ${r.fecha_vencimiento}`:""}</div>
+                  </div>
+                  {/* Toggle activo */}
+                  <button onClick={() => toggleActivo(r)} style={{ padding:"6px 14px", borderRadius:8, border:"1px solid", borderColor:r.activo?"rgba(139,32,53,0.4)":"rgba(74,138,74,0.4)", background:r.activo?"rgba(139,32,53,0.1)":"rgba(26,58,26,0.3)", color:r.activo?"#c06070":"#a0d0a0", cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>
+                    {r.activo ? "Desactivar" : "Activar"}
+                  </button>
+                  <button onClick={() => setEditRest({...r})} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${P}22`, background:`${P}12`, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>
+                    Editar
+                  </button>
+                </div>
+
+                {/* Info de contacto */}
+                {(r.contacto_nombre||r.contacto_email||r.contacto_tel) && (
+                  <div style={{ fontSize:12, color:"#806050", marginBottom:8 }}>
+                    {r.contacto_nombre && <span>{r.contacto_nombre} </span>}
+                    {r.contacto_tel && <span>· {r.contacto_tel} </span>}
+                    {r.contacto_email && <span>· {r.contacto_email}</span>}
+                  </div>
+                )}
+
+                {/* Ver analíticas */}
+                <button onClick={() => { cargarEventos(r.id); setTab("analiticas"); }} style={{ background:"none", border:"none", color:`${P}88`, cursor:"pointer", fontFamily:"inherit", fontSize:12, padding:0 }}>
+                  Ver analíticas →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: ANALÍTICAS ── */}
+      {tab==="analiticas" && (
+        <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+          <div style={{ fontSize:16, fontWeight:300, marginBottom:16 }}>Comportamiento de Invitados</div>
+
+          {/* Selector de restaurante */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ fontSize:11, color:"#806050", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>Restaurante</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {restaurantes.map(r => (
+                <button key={r.id} onClick={() => cargarEventos(r.id)} style={{ padding:"10px 14px", borderRadius:8, border:"1px solid", borderColor:restSelec===r.id?P:`${P}18`, background:restSelec===r.id?`${P}18`:"transparent", color:restSelec===r.id?P:"#a09080", cursor:"pointer", fontFamily:"inherit", fontSize:14, textAlign:"left" }}>
+                  {r.nombre}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {restSelec && eventos.length > 0 && (() => {
+            const tiposEvento = [
+              { tipo:"vista_home",     label:"Pantalla de inicio",  emoji:"🏠" },
+              { tipo:"vista_carta",    label:"Carta de vinos",      emoji:"🍷" },
+              { tipo:"vista_maridaje", label:"Maridaje",            emoji:"🍽️" },
+              { tipo:"vista_promo",    label:"Promoción",           emoji:"🌟" },
+              { tipo:"vista_vino",     label:"Fichas de vino vistas",emoji:"👁️" },
+              { tipo:"seleccion_vino", label:"Vinos seleccionados", emoji:"✅" },
+              { tipo:"uso_filtro",     label:"Filtros usados",      emoji:"🔍" },
+            ];
+
+            // Top vinos más vistos
+            const vinosVistos = eventos.filter(e=>e.tipo==="vista_vino"&&e.vino_nombre)
+              .reduce((acc,e) => { acc[e.vino_nombre]=(acc[e.vino_nombre]||0)+1; return acc; }, {});
+            const topVinos = Object.entries(vinosVistos).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+            // Top vinos seleccionados
+            const vinosSelec = eventos.filter(e=>e.tipo==="seleccion_vino"&&e.vino_nombre)
+              .reduce((acc,e) => { acc[e.vino_nombre]=(acc[e.vino_nombre]||0)+1; return acc; }, {});
+            const topSelec = Object.entries(vinosSelec).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+            return (
+              <div>
+                {/* Resumen general */}
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20 }}>
+                  {tiposEvento.slice(0,3).map(({tipo,label,emoji}) => (
+                    <div key={tipo} style={{ background:`${P}10`, border:`1px solid ${P}18`, borderRadius:10, padding:"12px 14px", textAlign:"center" }}>
+                      <div style={{ fontSize:24, marginBottom:4 }}>{emoji}</div>
+                      <div style={{ fontSize:22, color:P, fontWeight:300 }}>{eventos.filter(e=>e.tipo===tipo).length}</div>
+                      <div style={{ fontSize:11, color:"#806050", marginTop:2 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10, marginBottom:20 }}>
+                  {tiposEvento.slice(3).map(({tipo,label,emoji}) => (
+                    <div key={tipo} style={{ background:`${P}10`, border:`1px solid ${P}18`, borderRadius:10, padding:"12px 14px", textAlign:"center" }}>
+                      <div style={{ fontSize:20, marginBottom:4 }}>{emoji}</div>
+                      <div style={{ fontSize:22, color:P, fontWeight:300 }}>{eventos.filter(e=>e.tipo===tipo).length}</div>
+                      <div style={{ fontSize:11, color:"#806050", marginTop:2 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Top vinos vistos */}
+                {topVinos.length>0 && (
+                  <div style={{ marginBottom:20 }}>
+                    <div style={{ fontSize:13, letterSpacing:3, color:P, textTransform:"uppercase", marginBottom:10 }}>Top vinos más vistos</div>
+                    {topVinos.map(([nombre,count],i) => (
+                      <div key={nombre} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                        <div style={{ fontSize:12, color:"#4a3a2a", minWidth:16 }}>{i+1}</div>
+                        <div style={{ flex:1, fontSize:14, color:"#f0e4d0" }}>{nombre}</div>
+                        <div style={{ fontSize:14, color:P }}>{count} vistas</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Top vinos seleccionados */}
+                {topSelec.length>0 && (
+                  <div>
+                    <div style={{ fontSize:13, letterSpacing:3, color:P, textTransform:"uppercase", marginBottom:10 }}>Vinos más seleccionados</div>
+                    {topSelec.map(([nombre,count],i) => (
+                      <div key={nombre} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                        <div style={{ fontSize:12, color:"#4a3a2a", minWidth:16 }}>{i+1}</div>
+                        <div style={{ flex:1, fontSize:14, color:"#f0e4d0" }}>{nombre}</div>
+                        <div style={{ fontSize:14, color:"#a0d0a0" }}>{count} veces</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {restSelec && eventos.length===0 && (
+            <div style={{ textAlign:"center", paddingTop:40, color:"#4a3a2a" }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>📊</div>
+              <div style={{ fontSize:15, color:"#806050" }}>Sin eventos registrados aún</div>
+              <div style={{ fontSize:13, marginTop:6 }}>Los datos aparecen conforme los invitados usen la app</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── MODAL: EDITAR / NUEVO RESTAURANTE ── */}
+      {(editRest||nuevoRest) && (() => {
+        const r = editRest||nuevoRest;
+        const setR = editRest ? setEditRest : setNuevoRest;
+        return (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+            <div style={{ background:"#100814", border:`1px solid ${P}22`, borderRadius:16, padding:24, width:"100%", maxWidth:460, maxHeight:"90vh", overflowY:"auto" }}>
+              <div style={{ fontSize:18, fontWeight:300, marginBottom:20, color:P }}>{r.id?"Editar Restaurante":"Nuevo Restaurante"}</div>
+              {[
+                ["Nombre del restaurante", "nombre", "text"],
+                ["Contacto (nombre)", "contacto_nombre", "text"],
+                ["Teléfono", "contacto_tel", "text"],
+                ["Email", "contacto_email", "email"],
+                ["PIN Admin", "pin_admin", "text"],
+                ["PIN Mesero", "pin_mesero", "text"],
+              ].map(([label, key, type]) => (
+                <div key={key} style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>{label}</div>
+                  <input type={type} value={r[key]||""} onChange={e=>setR(x=>({...x,[key]:e.target.value}))}
+                    style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, boxSizing:"border-box" }}/>
+                </div>
+              ))}
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Plan</div>
+                <select value={r.plan||"mensual"} onChange={e=>setR(x=>({...x,plan:e.target.value}))} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14 }}>
+                  <option value="mensual">Mensual</option>
+                  <option value="trimestral">Trimestral</option>
+                  <option value="anual">Anual</option>
+                  <option value="prueba">Prueba</option>
+                </select>
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Fecha de vencimiento</div>
+                <input type="date" value={r.fecha_vencimiento||""} onChange={e=>setR(x=>({...x,fecha_vencimiento:e.target.value}))}
+                  style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, boxSizing:"border-box" }}/>
+              </div>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Notas</div>
+                <textarea value={r.notas||""} onChange={e=>setR(x=>({...x,notas:e.target.value}))} rows={2}
+                  style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, resize:"vertical", boxSizing:"border-box" }}/>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => guardarRestaurante(r)} style={{ flex:1, padding:12, background:`linear-gradient(135deg,${P}88,${P})`, border:"none", borderRadius:8, color:"#fff", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Guardar</button>
+                <button onClick={() => { setEditRest(null); setNuevoRest(null); }} style={{ flex:1, padding:12, background:"#100814", border:`1px solid ${P}22`, borderRadius:8, color:"#a09080", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
 }
