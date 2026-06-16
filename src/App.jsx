@@ -189,7 +189,6 @@ export default function CartaVinos() {
   const [modo,          setModo]          = useState("guest");
   const [screen,        setScreen]        = useState("home");
   const [restauranteId, setRestauranteId] = useState(null);
-  const [cargando,      setCargando]      = useState(false);
   const [restauranteActivo, setRestauranteActivo] = useState(true);
 
   // ── Cargar datos de Supabase al arrancar ─────────────────────────────────
@@ -267,7 +266,7 @@ export default function CartaVinos() {
       } catch(e) {
         console.error("Error cargando datos:", e);
       }
-      setCargando(false);
+
     };
     cargar();
   }, []);
@@ -321,13 +320,6 @@ export default function CartaVinos() {
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 2500); };
 
   // ── Pantalla de carga ─────────────────────────────────────────────────────
-  if (cargando) return (
-    <div style={{ minHeight:"100vh", background:"#0a0704", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Cormorant Garamond','Georgia',serif", color:"#f5ede0" }}>
-      <div style={{ fontSize:40, marginBottom:16 }}>🍷</div>
-      <div style={{ fontSize:22, fontWeight:300, letterSpacing:4, marginBottom:8 }}>VinotecApp</div>
-      <div style={{ fontSize:13, color:"#c4a84e", letterSpacing:3 }}>Cargando carta…</div>
-    </div>
-  );
 
   // ── Pantalla de servicio no disponible ────────────────────────────────────
   if (restauranteActivo === false) return (
