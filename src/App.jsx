@@ -197,8 +197,11 @@ export default function CartaVinos() {
     const cargar = async () => {
       try {
         // 1. Restaurante
-        const rests = await sb.from("restaurantes").select("*");
-        if (!rests || rests.error || rests.length === 0) { setCargando(false); return; }
+        const rests = await fetch(
+          `${SUPABASE_URL}/rest/v1/restaurantes?select=*&limit=1`,
+          { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+        ).then(r => r.json());
+        if (!rests || rests.error || rests.length === 0) { return; }
         const rest = rests[0];
         setRestauranteId(rest.id);
         setRestauranteActivo(rest.activo);
