@@ -190,6 +190,7 @@ export default function CartaVinos() {
   const [screen,        setScreen]        = useState("home");
   const [restauranteId, setRestauranteId] = useState(null);
   const [cargando,      setCargando]      = useState(false);
+  const [restauranteActivo, setRestauranteActivo] = useState(null);
 
   // ── Cargar datos de Supabase al arrancar ─────────────────────────────────
   useEffect(() => {
@@ -200,6 +201,7 @@ export default function CartaVinos() {
         if (!rests || rests.error || rests.length === 0) { setCargando(false); return; }
         const rest = rests[0];
         setRestauranteId(rest.id);
+        setRestauranteActivo(rest.activo);
         setConfig(c => ({
           ...c,
           nombre:          rest.nombre          || c.nombre,
@@ -321,6 +323,16 @@ export default function CartaVinos() {
       <div style={{ fontSize:40, marginBottom:16 }}>🍷</div>
       <div style={{ fontSize:22, fontWeight:300, letterSpacing:4, marginBottom:8 }}>VinotecApp</div>
       <div style={{ fontSize:13, color:"#c4a84e", letterSpacing:3 }}>Cargando carta…</div>
+    </div>
+  );
+
+  // ── Pantalla de servicio no disponible ────────────────────────────────────
+  if (restauranteActivo === false) return (
+    <div style={{ minHeight:"100vh", background:"#0a0704", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Cormorant Garamond','Georgia',serif", color:"#f5ede0", textAlign:"center", padding:32 }}>
+      <div style={{ fontSize:48, marginBottom:20 }}>🍷</div>
+      <div style={{ fontSize:11, letterSpacing:5, color:"#c4a84e", textTransform:"uppercase", marginBottom:12 }}>VinotecApp</div>
+      <div style={{ fontSize:26, fontWeight:300, marginBottom:12 }}>Servicio no disponible</div>
+      <div style={{ fontSize:15, color:"#806050", maxWidth:300, lineHeight:1.6 }}>La carta digital no está disponible en este momento. Por favor contacta al restaurante.</div>
     </div>
   );
 
