@@ -1,3 +1,7 @@
+
+
+  return null;
+}
 import { useState, useRef } from "react";
 
 // ── ESTADO INICIAL ────────────────────────────────────────────────────────────
@@ -142,6 +146,9 @@ export default function CartaVinos() {
   const [platRestaurantes, setPlatRestaurantes] = useState([
     { id:"1", nombre:"Trattoria al Passo", activo:true, plan:"mensual", contacto_nombre:"Federico", contacto_tel:"", contacto_email:"", fecha_vencimiento:"", notas:"" }
   ]);
+  const [platTab,  setPlatTab]  = useState("restaurantes");
+  const [editRest, setEditRest] = useState(null);
+  const [nuevoRest, setNuevoRest] = useState(null);
 
   const showToast = (msg, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),2500); };
 
@@ -864,9 +871,6 @@ export default function CartaVinos() {
   // ─────────────────────────────────────────────────────────────────────────
   if (modo==="plataforma" && screen==="plataforma") {
     const P = "#9b7fe8";
-    const [platTab, setPlatTab] = useState("restaurantes");
-    const [editRest, setEditRest] = useState(null);
-    const [nuevoRest, setNuevoRest] = useState(null);
 
     const toggleActivo = (id) => setPlatRestaurantes(rs=>rs.map(r=>r.id===id?{...r,activo:!r.activo}:r));
     const guardarRestaurante = (r) => {
@@ -952,6 +956,3 @@ export default function CartaVinos() {
       </div>
     );
   }
-
-  return null;
-}
