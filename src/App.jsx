@@ -1,7 +1,3 @@
-
-
-  return null;
-}
 import { useState, useRef } from "react";
 
 // ── ESTADO INICIAL ────────────────────────────────────────────────────────────
@@ -146,9 +142,6 @@ export default function CartaVinos() {
   const [platRestaurantes, setPlatRestaurantes] = useState([
     { id:"1", nombre:"Trattoria al Passo", activo:true, plan:"mensual", contacto_nombre:"Federico", contacto_tel:"", contacto_email:"", fecha_vencimiento:"", notas:"" }
   ]);
-  const [platTab,  setPlatTab]  = useState("restaurantes");
-  const [editRest, setEditRest] = useState(null);
-  const [nuevoRest, setNuevoRest] = useState(null);
 
   const showToast = (msg, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),2500); };
 
@@ -870,89 +863,113 @@ export default function CartaVinos() {
   // PANEL PLATAFORMA
   // ─────────────────────────────────────────────────────────────────────────
   if (modo==="plataforma" && screen==="plataforma") {
-    const P = "#9b7fe8";
-
-    const toggleActivo = (id) => setPlatRestaurantes(rs=>rs.map(r=>r.id===id?{...r,activo:!r.activo}:r));
-    const guardarRestaurante = (r) => {
-      if (r.id) setPlatRestaurantes(rs=>rs.map(x=>x.id===r.id?r:x));
-      else setPlatRestaurantes(rs=>[...rs,{...r,id:Date.now().toString(),activo:true}]);
-      setEditRest(null); setNuevoRest(null);
-    };
-
-    const TabBtn = ({id,label}) => <button onClick={()=>setPlatTab(id)} style={{ flex:1, padding:"12px 8px", background:platTab===id?`${P}18`:"transparent", border:"none", borderBottom:platTab===id?`2px solid ${P}`:"2px solid transparent", color:platTab===id?P:"#806050", cursor:"pointer", fontFamily:"inherit", fontSize:14 }}>{label}</button>;
-
     return (
-      <div style={{ minHeight:"100vh", background:"#060408", color:"#f5ede0", fontFamily:"'Cormorant Garamond','Georgia',serif", display:"flex", flexDirection:"column" }}>
-        <div style={{ padding:"16px 24px", borderBottom:`1px solid ${P}18`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-          <div><div style={{ fontSize:11, letterSpacing:4, color:P, textTransform:"uppercase" }}>Panel Maestro</div><div style={{ fontSize:22, fontWeight:300 }}>VinotecApp</div></div>
-          <button onClick={() => { setModo("guest"); setScreen("home"); }} style={{ background:`${P}18`, border:`1px solid ${P}33`, borderRadius:8, padding:"8px 16px", color:"#f5ede0", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>Salir</button>
-        </div>
-        <div style={{ display:"flex", borderBottom:`1px solid ${P}18`, flexShrink:0 }}>
-          <TabBtn id="restaurantes" label="🏪 Restaurantes"/>
-          <TabBtn id="analiticas" label="📊 Analíticas"/>
-        </div>
-        {platTab==="restaurantes" && (
-          <div style={{ flex:1, overflowY:"auto", padding:20 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <div style={{ fontSize:16, fontWeight:300 }}>{platRestaurantes.length} restaurantes</div>
-              <button onClick={() => setNuevoRest({nombre:"",contacto_nombre:"",contacto_email:"",contacto_tel:"",plan:"mensual",pin_admin:"9999",pin_mesero:"1234",notas:""})} style={{ padding:"8px 16px", background:`${P}18`, border:`1px solid ${P}44`, borderRadius:8, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>+ Nuevo</button>
-            </div>
-            {platRestaurantes.map(r => (
-              <div key={r.id} style={{ background:"linear-gradient(135deg,#0e080e,#160e18)", border:`1px solid ${r.activo?"#9b7fe822":"rgba(139,32,53,0.2)"}`, borderRadius:12, padding:"16px 20px", marginBottom:12 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-                  <div style={{ width:10, height:10, borderRadius:"50%", background:r.activo?"#4a8a4a":"#8a4a4a", flexShrink:0 }}/>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:18, fontWeight:400 }}>{r.nombre}</div>
-                    <div style={{ fontSize:12, color:"#806050" }}>{r.activo?"Activo":"Inactivo"} · {r.plan||"mensual"}</div>
-                  </div>
-                  <button onClick={() => toggleActivo(r.id)} style={{ padding:"6px 14px", borderRadius:8, border:"1px solid", borderColor:r.activo?"rgba(139,32,53,0.4)":"rgba(74,138,74,0.4)", background:r.activo?"rgba(139,32,53,0.1)":"rgba(26,58,26,0.3)", color:r.activo?"#c06070":"#a0d0a0", cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>{r.activo?"Desactivar":"Activar"}</button>
-                  <button onClick={() => setEditRest({...r})} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${P}22`, background:`${P}12`, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Editar</button>
-                </div>
-                {(r.contacto_nombre||r.contacto_tel) && <div style={{ fontSize:12, color:"#806050" }}>{r.contacto_nombre}{r.contacto_tel?` · ${r.contacto_tel}`:""}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-        {platTab==="analiticas" && (
-          <div style={{ flex:1, padding:20, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, color:"#4a3a2a" }}>
-            <div style={{ fontSize:32 }}>📊</div>
-            <div style={{ fontSize:16, color:"#806050" }}>Analíticas disponibles próximamente</div>
-            <div style={{ fontSize:13 }}>Se activarán cuando conectemos Supabase</div>
-          </div>
-        )}
-        {(editRest||nuevoRest) && (() => {
-          const r=editRest||nuevoRest; const setR=editRest?setEditRest:setNuevoRest;
-          return (
-            <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-              <div style={{ background:"#100814", border:`1px solid ${P}22`, borderRadius:16, padding:24, width:"100%", maxWidth:460, maxHeight:"90vh", overflowY:"auto" }}>
-                <div style={{ fontSize:18, fontWeight:300, marginBottom:20, color:P }}>{r.id?"Editar Restaurante":"Nuevo Restaurante"}</div>
-                {[["Nombre","nombre"],["Contacto","contacto_nombre"],["Teléfono","contacto_tel"],["Email","contacto_email"],["PIN Admin","pin_admin"],["PIN Mesero","pin_mesero"]].map(([label,key]) => (
-                  <div key={key} style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>{label}</div>
-                    <input value={r[key]||""} onChange={e=>setR(x=>({...x,[key]:e.target.value}))} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, boxSizing:"border-box" }}/>
-                  </div>
-                ))}
-                <div style={{ marginBottom:16 }}>
-                  <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Plan</div>
-                  <select value={r.plan||"mensual"} onChange={e=>setR(x=>({...x,plan:e.target.value}))} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14 }}>
-                    <option value="mensual">Mensual</option>
-                    <option value="trimestral">Trimestral</option>
-                    <option value="anual">Anual</option>
-                    <option value="prueba">Prueba</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom:20 }}>
-                  <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Notas</div>
-                  <textarea value={r.notas||""} onChange={e=>setR(x=>({...x,notas:e.target.value}))} rows={2} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, resize:"vertical", boxSizing:"border-box" }}/>
-                </div>
-                <div style={{ display:"flex", gap:10 }}>
-                  <button onClick={() => guardarRestaurante(r)} style={{ flex:1, padding:12, background:`linear-gradient(135deg,${P}88,${P})`, border:"none", borderRadius:8, color:"#fff", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Guardar</button>
-                  <button onClick={() => { setEditRest(null); setNuevoRest(null); }} style={{ flex:1, padding:12, background:"#100814", border:`1px solid ${P}22`, borderRadius:8, color:"#a09080", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Cancelar</button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
+      <PanelPlataforma
+        platRestaurantes={platRestaurantes}
+        setPlatRestaurantes={setPlatRestaurantes}
+        onSalir={() => { setModo("guest"); setScreen("home"); }}
+      />
     );
   }
+
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PANEL PLATAFORMA — componente separado para respetar reglas de hooks
+// ═══════════════════════════════════════════════════════════════════════════
+function PanelPlataforma({ platRestaurantes, setPlatRestaurantes, onSalir }) {
+  const P = "#9b7fe8";
+  const [platTab,   setPlatTab]   = useState("restaurantes");
+  const [editRest,  setEditRest]  = useState(null);
+  const [nuevoRest, setNuevoRest] = useState(null);
+
+  const toggleActivo = (id) => setPlatRestaurantes(rs=>rs.map(r=>r.id===id?{...r,activo:!r.activo}:r));
+  const guardarRestaurante = (r) => {
+    if (r.id) setPlatRestaurantes(rs=>rs.map(x=>x.id===r.id?r:x));
+    else setPlatRestaurantes(rs=>[...rs,{...r,id:Date.now().toString(),activo:true}]);
+    setEditRest(null); setNuevoRest(null);
+  };
+
+  const TabBtn = ({id,label}) => (
+    <button onClick={()=>setPlatTab(id)} style={{ flex:1, padding:"12px 8px", background:platTab===id?`${P}18`:"transparent", border:"none", borderBottom:platTab===id?`2px solid ${P}`:"2px solid transparent", color:platTab===id?P:"#806050", cursor:"pointer", fontFamily:"inherit", fontSize:14 }}>{label}</button>
+  );
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#060408", color:"#f5ede0", fontFamily:"'Cormorant Garamond','Georgia',serif", display:"flex", flexDirection:"column" }}>
+      <div style={{ padding:"16px 24px", borderBottom:`1px solid ${P}18`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+        <div><div style={{ fontSize:11, letterSpacing:4, color:P, textTransform:"uppercase" }}>Panel Maestro</div><div style={{ fontSize:22, fontWeight:300 }}>VinotecApp</div></div>
+        <button onClick={onSalir} style={{ background:`${P}18`, border:`1px solid ${P}33`, borderRadius:8, padding:"8px 16px", color:"#f5ede0", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>Salir</button>
+      </div>
+      <div style={{ display:"flex", borderBottom:`1px solid ${P}18`, flexShrink:0 }}>
+        <TabBtn id="restaurantes" label="🏪 Restaurantes"/>
+        <TabBtn id="analiticas"   label="📊 Analíticas"/>
+      </div>
+
+      {platTab==="restaurantes" && (
+        <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+            <div style={{ fontSize:16, fontWeight:300 }}>{platRestaurantes.length} restaurantes</div>
+            <button onClick={() => setNuevoRest({nombre:"",contacto_nombre:"",contacto_email:"",contacto_tel:"",plan:"mensual",pin_admin:"9999",pin_mesero:"1234",notas:""})} style={{ padding:"8px 16px", background:`${P}18`, border:`1px solid ${P}44`, borderRadius:8, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>+ Nuevo</button>
+          </div>
+          {platRestaurantes.map(r => (
+            <div key={r.id} style={{ background:"linear-gradient(135deg,#0e080e,#160e18)", border:`1px solid ${r.activo?"#9b7fe822":"rgba(139,32,53,0.2)"}`, borderRadius:12, padding:"16px 20px", marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                <div style={{ width:10, height:10, borderRadius:"50%", background:r.activo?"#4a8a4a":"#8a4a4a", flexShrink:0 }}/>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:18, fontWeight:400 }}>{r.nombre}</div>
+                  <div style={{ fontSize:12, color:"#806050" }}>{r.activo?"Activo":"Inactivo"} · {r.plan||"mensual"}</div>
+                </div>
+                <button onClick={() => toggleActivo(r.id)} style={{ padding:"6px 14px", borderRadius:8, border:"1px solid", borderColor:r.activo?"rgba(139,32,53,0.4)":"rgba(74,138,74,0.4)", background:r.activo?"rgba(139,32,53,0.1)":"rgba(26,58,26,0.3)", color:r.activo?"#c06070":"#a0d0a0", cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>{r.activo?"Desactivar":"Activar"}</button>
+                <button onClick={() => setEditRest({...r})} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${P}22`, background:`${P}12`, color:P, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Editar</button>
+              </div>
+              {(r.contacto_nombre||r.contacto_tel) && <div style={{ fontSize:12, color:"#806050" }}>{r.contacto_nombre}{r.contacto_tel?` · ${r.contacto_tel}`:""}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {platTab==="analiticas" && (
+        <div style={{ flex:1, padding:20, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, color:"#4a3a2a" }}>
+          <div style={{ fontSize:32 }}>📊</div>
+          <div style={{ fontSize:16, color:"#806050" }}>Analíticas disponibles próximamente</div>
+          <div style={{ fontSize:13 }}>Se activarán cuando conectemos Supabase</div>
+        </div>
+      )}
+
+      {(editRest||nuevoRest) && (() => {
+        const r=editRest||nuevoRest; const setR=editRest?setEditRest:setNuevoRest;
+        return (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+            <div style={{ background:"#100814", border:`1px solid ${P}22`, borderRadius:16, padding:24, width:"100%", maxWidth:460, maxHeight:"90vh", overflowY:"auto" }}>
+              <div style={{ fontSize:18, fontWeight:300, marginBottom:20, color:P }}>{r.id?"Editar Restaurante":"Nuevo Restaurante"}</div>
+              {[["Nombre","nombre"],["Contacto","contacto_nombre"],["Teléfono","contacto_tel"],["Email","contacto_email"],["PIN Admin","pin_admin"],["PIN Mesero","pin_mesero"]].map(([label,key]) => (
+                <div key={key} style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>{label}</div>
+                  <input value={r[key]||""} onChange={e=>setR(x=>({...x,[key]:e.target.value}))} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, boxSizing:"border-box" }}/>
+                </div>
+              ))}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Plan</div>
+                <select value={r.plan||"mensual"} onChange={e=>setR(x=>({...x,plan:e.target.value}))} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14 }}>
+                  <option value="mensual">Mensual</option>
+                  <option value="trimestral">Trimestral</option>
+                  <option value="anual">Anual</option>
+                  <option value="prueba">Prueba</option>
+                </select>
+              </div>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, color:"#806050", marginBottom:4 }}>Notas</div>
+                <textarea value={r.notas||""} onChange={e=>setR(x=>({...x,notas:e.target.value}))} rows={2} style={{ width:"100%", background:"#080410", border:`1px solid ${P}22`, borderRadius:8, padding:"8px 12px", color:"#f5ede0", fontFamily:"inherit", fontSize:14, resize:"vertical", boxSizing:"border-box" }}/>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => guardarRestaurante(r)} style={{ flex:1, padding:12, background:`linear-gradient(135deg,${P}88,${P})`, border:"none", borderRadius:8, color:"#fff", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Guardar</button>
+                <button onClick={() => { setEditRest(null); setNuevoRest(null); }} style={{ flex:1, padding:12, background:"#100814", border:`1px solid ${P}22`, borderRadius:8, color:"#a09080", fontFamily:"inherit", fontSize:15, cursor:"pointer" }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
