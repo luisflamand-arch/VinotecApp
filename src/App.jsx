@@ -148,8 +148,9 @@ export default function CartaVinos() {
   ]);
   const [restauranteActivo, setRestauranteActivo] = useState(true);
 
-  // Solo verificamos si el restaurante está activo — nada más
+  // Solo verificamos si el restaurante está activo y cargamos vinos
   useEffect(() => {
+    // 1. Verificar si está activo
     fetch(`${SUPABASE_URL}/rest/v1/restaurantes?id=eq.${RESTAURANTE_ID}&select=activo`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     })
@@ -159,7 +160,32 @@ export default function CartaVinos() {
         setRestauranteActivo(data[0].activo);
       }
     })
-    .catch(() => {}); // Si falla, seguimos mostrando la app normal
+    .catch(() => {});
+
+    // 2. Cargar vinos reales
+    fetch(`${SUPABASE_URL}/rest/v1/vinos?restaurante_id=eq.${RESTAURANTE_ID}&select=*&order=pais.asc,tipo.asc,nombre.asc`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.length > 0) {
+        setVinos(data.map(v => ({
+          id: v.id,
+          nombre: v.nombre,
+          tipo: v.tipo,
+          cepa: v.cepa || "",
+          pais: v.pais || "",
+          region: v.region || "",
+          precio: Number(v.precio) || 0,
+          clasificacion: v.clasificacion || "",
+          descripcion: v.descripcion || "",
+          stock: v.stock || 0,
+          activo: v.activo !== false,
+          imagen: v.imagen_url || null,
+        })));
+      }
+    })
+    .catch(() => {});
   }, []);
 
   const showToast = (msg, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),2500); };
@@ -183,8 +209,17 @@ export default function CartaVinos() {
 
   const ajustarStock = (id, delta) => {
     const vino = vinos.find(v=>v.id===id);
-    setVinos(vs => vs.map(v => v.id===id ? {...v, stock:Math.max(0,v.stock+delta)} : v));
-    if (vino) logMovimiento(delta>0?"Alta":"Ajuste", vino, Math.abs(delta));
+    const nuevoStock = Math.max(0, (vino?.stock||0) + delta);
+    setVinos(vs => vs.map(v => v.id===id ? {...v, stock:nuevoStock} : v));
+    if (vino) {
+      logMovimiento(delta>0?"Alta":"Ajuste", vino, Math.abs(delta));
+      // Guardar en Supabase
+      fetch(`${SUPABASE_URL}/rest/v1/vinos?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ stock: nuevoStock })
+      }).catch(() => {});
+    }
   };
 
   const guardarVino = (v) => {
